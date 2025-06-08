@@ -1,8 +1,10 @@
-import { Plus, X } from "lucide-react";
+import { Plus, X, Settings } from "lucide-react";
 import { TFile } from "obsidian";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PDFProcessingModal } from "@/components/modals/PDFProcessingModal";
+import { PDFProcessingOptions } from "@/tools/SelectivePDFParser";
 
 interface ChatContextMenuProps {
   activeNote: TFile | null;
@@ -11,32 +13,60 @@ interface ChatContextMenuProps {
   onAddContext: () => void;
   onRemoveContext: (path: string) => void;
   onRemoveUrl: (url: string) => void;
+  onProcessPDF?: (file: TFile, options: PDFProcessingOptions) => void;
 }
 
 function ContextNote({
   note,
   isActive = false,
   onRemoveContext,
+  onProcessPDF,
 }: {
   note: TFile;
   isActive: boolean;
   onRemoveContext: (path: string) => void;
+  onProcessPDF?: (file: TFile, options: PDFProcessingOptions) => void;
 }) {
+  const isPDF = note.extension === "pdf";
+
+  const handlePDFOptions = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPDF && onProcessPDF) {
+      const modal = new PDFProcessingModal(app, note.basename, (options) =>
+        onProcessPDF(note, options)
+      );
+      modal.open();
+    }
+  };
+
   return (
     <Badge className="tw-items-center tw-py-0 tw-pl-2 tw-pr-0.5 tw-text-xs">
       <div className="tw-flex tw-items-center tw-gap-1">
         <span className="tw-max-w-40 tw-truncate">{note.basename}</span>
         {isActive && <span className="tw-text-xs tw-text-faint">Current</span>}
-        {note.extension === "pdf" && <span className="tw-text-xs tw-text-faint">pdf</span>}
+        {isPDF && <span className="tw-text-xs tw-text-faint">PDF</span>}
       </div>
-      <Button
-        variant="ghost2"
-        size="fit"
-        onClick={() => onRemoveContext(note.path)}
-        aria-label="Remove from context"
-      >
-        <X className="tw-size-4" />
-      </Button>
+      <div className="tw-flex tw-items-center tw-gap-0.5">
+        {isPDF && onProcessPDF && (
+          <Button
+            variant="ghost2"
+            size="fit"
+            onClick={handlePDFOptions}
+            aria-label="PDF processing options"
+            title="Configure how this PDF is processed"
+          >
+            <Settings className="tw-size-3" />
+          </Button>
+        )}
+        <Button
+          variant="ghost2"
+          size="fit"
+          onClick={() => onRemoveContext(note.path)}
+          aria-label="Remove from context"
+        >
+          <X className="tw-size-4" />
+        </Button>
+      </div>
     </Badge>
   );
 }
@@ -46,13 +76,13 @@ function ContextUrl({ url, onRemoveUrl }: { url: string; onRemoveUrl: (url: stri
     <Badge className="tw-items-center tw-py-0 tw-pl-2 tw-pr-0.5 tw-text-xs">
       <div className="tw-flex tw-items-center tw-gap-1">
         <span className="tw-max-w-40 tw-truncate">{url}</span>
-        <span className="tw-text-xs tw-text-faint">Link</span>
+        <span className="tw-text-xs tw-text-faint">URL</span>
       </div>
       <Button
         variant="ghost2"
         size="fit"
         onClick={() => onRemoveUrl(url)}
-        aria-label="Remove from context"
+        aria-label="Remove URL from context"
       >
         <X className="tw-size-4" />
       </Button>
@@ -67,6 +97,7 @@ export const ChatContextMenu: React.FC<ChatContextMenuProps> = ({
   onAddContext,
   onRemoveContext,
   onRemoveUrl,
+  onProcessPDF,
 }) => {
   const uniqueNotes = React.useMemo(() => {
     const notesMap = new Map(contextNotes.map((note) => [note.path, note]));
@@ -106,6 +137,7 @@ export const ChatContextMenu: React.FC<ChatContextMenuProps> = ({
             note={activeNote}
             isActive={true}
             onRemoveContext={onRemoveContext}
+            onProcessPDF={onProcessPDF}
           />
         )}
         {uniqueNotes.map((note) => (
@@ -114,6 +146,7 @@ export const ChatContextMenu: React.FC<ChatContextMenuProps> = ({
             note={note}
             isActive={false}
             onRemoveContext={onRemoveContext}
+            onProcessPDF={onProcessPDF}
           />
         ))}
         {uniqueUrls.map((url) => (

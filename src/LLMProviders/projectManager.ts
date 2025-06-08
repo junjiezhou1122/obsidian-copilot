@@ -22,7 +22,7 @@ import { FileParserManager } from "@/tools/FileParserManager";
 import { err2String } from "@/utils";
 import { App, Notice, TFile } from "obsidian";
 import VectorStoreManager from "../search/vectorStoreManager";
-import { BrevilabsClient } from "./brevilabsClient";
+// Removed BrevilabsClient dependency - API features disabled
 import ChainManager from "./chainManager";
 
 export default class ProjectManager {
@@ -43,12 +43,7 @@ export default class ProjectManager {
     this.chainMangerInstance = new ChainManager(app, vectorStoreManager);
     this.projectContextCache = ProjectContextCache.getInstance();
     this.chatMessageCache = new Map();
-    this.fileParserManager = new FileParserManager(
-      BrevilabsClient.getInstance(),
-      this.app.vault,
-      true,
-      null
-    );
+    this.fileParserManager = new FileParserManager(this.app.vault, true, null);
 
     // Set up subscriptions
     subscribeToModelKeyChange(async () => {
@@ -153,12 +148,7 @@ export default class ProjectManager {
       await this.loadNextProjectMessage();
       await this.getCurrentChainManager().createChainWithNewModel();
       // Update FileParserManager with the current project
-      this.fileParserManager = new FileParserManager(
-        BrevilabsClient.getInstance(),
-        this.app.vault,
-        true,
-        project
-      );
+      this.fileParserManager = new FileParserManager(this.app.vault, true, project);
       await this.loadProjectContext(project);
 
       // fresh chat view
@@ -237,12 +227,7 @@ export default class ProjectManager {
         );
 
         if (fileContextCount > 0) {
-          this.fileParserManager = new FileParserManager(
-            BrevilabsClient.getInstance(),
-            this.app.vault,
-            true,
-            project
-          );
+          this.fileParserManager = new FileParserManager(this.app.vault, true, project);
           let processedNonMdCount = 0;
           for (const filePath in updatedContextCacheAfterSources.fileContexts) {
             const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -766,21 +751,10 @@ modified: ${stat ? new Date(stat.mtime).toISOString() : "unknown"}`;
     }
 
     const urls = youtubeUrls.split("\n").filter((url) => url.trim());
-    const processPromises = urls.map(async (url) => {
-      try {
-        const response = await BrevilabsClient.getInstance().youtube4llm(url);
-        if (response.response.transcript) {
-          return `\n\nYouTube transcript from ${url}:\n${response.response.transcript}`;
-        }
-        return "";
-      } catch (error) {
-        logError(`Failed to process YouTube URL ${url}: ${error}`);
-        new Notice(`Failed to process YouTube URL ${url}: ${err2String(error)}`);
-        return "";
-      }
+    const results = urls.map((url) => {
+      return `\n\n[YouTube transcription disabled: ${url}]`;
     });
 
-    const results = await Promise.all(processPromises);
     return results.join("");
   }
 

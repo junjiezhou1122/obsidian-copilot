@@ -14,7 +14,7 @@ import {
   ImageProcessingResult,
   MessageContent,
 } from "@/imageProcessing/imageProcessor";
-import { BrevilabsClient } from "@/LLMProviders/brevilabsClient";
+// Removed BrevilabsClient dependency - YouTube processing disabled
 import { logInfo } from "@/logger";
 import { getSettings, getSystemPrompt } from "@/settings/model";
 import { ChatMessage } from "@/sharedState";
@@ -552,39 +552,16 @@ class CopilotPlusChainRunner extends BaseChainRunner {
       if (this.isYoutubeOnlyMessage(userMessage.message)) {
         const url = extractYoutubeUrl(userMessage.message);
         const failMessage =
-          "Transcript not available. Only videos with the auto transcript option turned on are supported at the moment.";
+          "YouTube transcription functionality has been disabled. Please provide transcripts manually or use alternative methods.";
         if (url) {
-          try {
-            const response = await BrevilabsClient.getInstance().youtube4llm(url);
-            if (response.response.transcript) {
-              return this.handleResponse(
-                response.response.transcript,
-                userMessage,
-                abortController,
-                addMessage,
-                updateCurrentAiMessage,
-                debug
-              );
-            }
-            return this.handleResponse(
-              failMessage,
-              userMessage,
-              abortController,
-              addMessage,
-              updateCurrentAiMessage,
-              debug
-            );
-          } catch (error) {
-            console.error("Error processing YouTube video:", error);
-            return this.handleResponse(
-              failMessage,
-              userMessage,
-              abortController,
-              addMessage,
-              updateCurrentAiMessage,
-              debug
-            );
-          }
+          return this.handleResponse(
+            failMessage,
+            userMessage,
+            abortController,
+            addMessage,
+            updateCurrentAiMessage,
+            debug
+          );
         }
       }
 

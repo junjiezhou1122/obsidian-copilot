@@ -1,4 +1,4 @@
-import { BrevilabsClient } from "@/LLMProviders/brevilabsClient";
+// Removed BrevilabsClient dependency - API features disabled
 import ProjectManager from "@/LLMProviders/projectManager";
 import { CustomModel, getCurrentProject } from "@/aiParams";
 import { AutocompleteService } from "@/autocomplete/autocompleteService";
@@ -42,7 +42,7 @@ export default class CopilotPlugin extends Plugin {
   // Only reset when the user explicitly clicks "New Chat"
   sharedState: SharedState;
   projectManager: ProjectManager;
-  brevilabsClient: BrevilabsClient;
+  // Removed brevilabsClient property - API features disabled
   userMessageHistory: string[] = [];
   vectorStoreManager: VectorStoreManager;
   fileParserManager: FileParserManager;
@@ -66,16 +66,14 @@ export default class CopilotPlugin extends Plugin {
 
     this.vectorStoreManager = VectorStoreManager.getInstance();
 
-    // Initialize BrevilabsClient
-    this.brevilabsClient = BrevilabsClient.getInstance();
-    this.brevilabsClient.setPluginVersion(this.manifest.version);
+    // BrevilabsClient initialization removed - API features disabled
     checkIsPlusUser();
 
     // Initialize ProjectManager
     this.projectManager = ProjectManager.getInstance(this.app, this.vectorStoreManager, this);
 
     // Initialize FileParserManager early with other core services
-    this.fileParserManager = new FileParserManager(this.brevilabsClient, this.app.vault);
+    this.fileParserManager = new FileParserManager(this.app.vault);
 
     this.registerView(CHAT_VIEWTYPE, (leaf: WorkspaceLeaf) => new CopilotView(leaf, this));
     this.registerView(APPLY_VIEW_TYPE, (leaf: WorkspaceLeaf) => new ApplyView(leaf));

@@ -336,7 +336,6 @@ export const BUILTIN_EMBEDDING_MODELS: CustomModel[] = [
     isBuiltIn: true,
     isEmbeddingModel: true,
     core: true,
-    believerExclusive: true,
     dimensions: 1024,
   },
   {

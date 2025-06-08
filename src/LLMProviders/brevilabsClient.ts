@@ -1,6 +1,7 @@
 import { BREVILABS_API_BASE_URL } from "@/constants";
 import { getDecryptedKey } from "@/encryptionService";
 import { logInfo } from "@/logger";
+import { turnOnPlus } from "@/plusUtils";
 import { getSettings } from "@/settings/model";
 import { Buffer } from "buffer";
 
@@ -285,14 +286,6 @@ export class BrevilabsClient {
   }
 
   async pdf4llm(binaryContent: ArrayBuffer): Promise<Pdf4llmResponse> {
-    // Check if we have a valid license key, if not, provide fallback
-    const licenseKey = getSettings().plusLicenseKey;
-    if (!licenseKey || licenseKey.trim() === "") {
-      throw new Error(
-        "PDF processing requires Copilot Plus license - feature not available in fallback mode"
-      );
-    }
-
     // Convert ArrayBuffer to base64 string
     const base64Content = Buffer.from(binaryContent).toString("base64");
 
@@ -310,14 +303,6 @@ export class BrevilabsClient {
   }
 
   async docs4llm(binaryContent: ArrayBuffer, fileType: string): Promise<Docs4llmResponse> {
-    // Check if we have a valid license key, if not, provide fallback
-    const licenseKey = getSettings().plusLicenseKey;
-    if (!licenseKey || licenseKey.trim() === "") {
-      throw new Error(
-        "Document processing requires Copilot Plus license - feature not available in fallback mode"
-      );
-    }
-
     // Create a FormData object
     const formData = new FormData();
 
@@ -417,14 +402,6 @@ export class BrevilabsClient {
     noteContext: string = "",
     relevant_notes: string = ""
   ): Promise<AutocompleteResponse> {
-    // Check if we have a valid license key, if not, provide fallback
-    const licenseKey = getSettings().plusLicenseKey;
-    if (!licenseKey || licenseKey.trim() === "") {
-      throw new Error(
-        "Autocomplete requires Copilot Plus license - feature not available in fallback mode"
-      );
-    }
-
     const { data, error } = await this.makeRequest<AutocompleteResponse>("/autocomplete", {
       prompt: prefix,
       note_context: noteContext,
@@ -445,14 +422,6 @@ export class BrevilabsClient {
     suffix: string = "",
     suggestions: string[]
   ): Promise<WordCompleteResponse> {
-    // Check if we have a valid license key, if not, provide fallback
-    const licenseKey = getSettings().plusLicenseKey;
-    if (!licenseKey || licenseKey.trim() === "") {
-      throw new Error(
-        "Word completion requires Copilot Plus license - feature not available in fallback mode"
-      );
-    }
-
     const { data, error } = await this.makeRequest<WordCompleteResponse>("/wordcomplete", {
       prefix: prefix,
       suffix: suffix,

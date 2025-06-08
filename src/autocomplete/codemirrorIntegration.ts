@@ -1,6 +1,6 @@
 import { AutocompleteCache } from "@/cache/autocompleteCache";
 import { AUTOCOMPLETE_CONFIG } from "@/constants";
-import { BrevilabsClient } from "@/LLMProviders/brevilabsClient";
+// Removed BrevilabsClient dependency - using local word completion only
 import { logError } from "@/logger";
 import { getSettings, subscribeToSettingsChange } from "@/settings/model";
 import { Extension } from "@codemirror/state";
@@ -23,7 +23,6 @@ export type AcceptKeyOption = "Tab" | "Space" | "ArrowRight";
 export class CodeMirrorIntegration {
   private static instance: CodeMirrorIntegration;
   private cache: AutocompleteCache;
-  private client: BrevilabsClient;
   private extension: Extension;
   private forceFetch: () => void;
   private isActive = false;
@@ -48,7 +47,6 @@ export class CodeMirrorIntegration {
 
   private constructor(private options: AutocompleteOptions) {
     this.cache = AutocompleteCache.getInstance();
-    this.client = BrevilabsClient.getInstance();
     this.postProcessor = new AutocompletePostProcessor();
 
     // Initialize word completion
@@ -454,25 +452,8 @@ export class CodeMirrorIntegration {
         if (cachedResponse) {
           wordCompleteResponse = cachedResponse;
         } else {
-          // Create and track the request
-          const requestPromise = this.client.wordcomplete(
-            contextPrefix,
-            contextSuffix,
-            suggestionWords
-          );
-
-          this.activeRequests.set(requestKey, requestPromise);
-          this.lastRequestTime = now;
-
-          wordCompleteResponse = await requestPromise;
-
-          // Cache the response (if caching is enabled)
-          if (this.cacheEnabled && cacheKey) {
-            this.cache.set(cacheKey, wordCompleteResponse);
-          }
-
-          // Clean up the request from active requests
-          this.activeRequests.delete(requestKey);
+          // API word completion disabled - fallback to local trie suggestions
+          wordCompleteResponse = null;
         }
 
         const selectedWord = wordCompleteResponse.response.selected_word;
@@ -562,26 +543,8 @@ export class CodeMirrorIntegration {
         if (cachedResponse) {
           response = cachedResponse;
         } else {
-          // Create and track the request
-          const requestPromise = this.client.autocomplete(
-            prefixWithTitle,
-            noteContext,
-            relevantNotesStr
-          );
-
-          this.activeRequests.set(requestKey, requestPromise);
-          this.lastRequestTime = now;
-
-          // Get completion from API
-          response = await requestPromise;
-
-          // Cache the response (if caching is enabled)
-          if (this.cacheEnabled && cacheKey) {
-            this.cache.set(cacheKey, response);
-          }
-
-          // Clean up the request from active requests
-          this.activeRequests.delete(requestKey);
+          // API sentence completion disabled
+          throw new Error("Sentence completion API disabled");
         }
 
         let completion = response.response.completion;

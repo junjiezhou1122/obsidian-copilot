@@ -1,5 +1,3 @@
-import { getChainType } from "@/aiParams";
-import { ChainType } from "@/chainFactory";
 import { getSettings } from "@/settings/model";
 import { App, MarkdownView, Platform, TAbstractFile, TFile } from "obsidian";
 import { DBOperations } from "./dbOperations";
@@ -34,10 +32,7 @@ export class IndexEventHandler {
       return;
     }
 
-    const currentChainType = getChainType();
-    if (currentChainType !== ChainType.COPILOT_PLUS_CHAIN) {
-      return;
-    }
+    // Index event handling now available for all chain types
 
     // Get the previously active file that we need to check
     const fileToCheck = this.lastActiveFile;

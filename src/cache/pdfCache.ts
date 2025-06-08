@@ -1,7 +1,12 @@
-import { Pdf4llmResponse } from "@/LLMProviders/brevilabsClient";
+// Removed Brevilabs dependency - using local PDF response type
 import { logError, logInfo } from "@/logger";
 import { MD5 } from "crypto-js";
 import { TFile } from "obsidian";
+
+interface Pdf4llmResponse {
+  response: string;
+  elapsed_time_ms: number;
+}
 
 export class PDFCache {
   private static instance: PDFCache;
@@ -53,6 +58,23 @@ export class PDFCache {
     }
   }
 
+  async getWithKey(cacheKey: string): Promise<Pdf4llmResponse | null> {
+    try {
+      const cachePath = this.getCachePath(cacheKey);
+
+      if (await app.vault.adapter.exists(cachePath)) {
+        logInfo("Cache hit for key:", cacheKey);
+        const cacheContent = await app.vault.adapter.read(cachePath);
+        return JSON.parse(cacheContent);
+      }
+      logInfo("Cache miss for key:", cacheKey);
+      return null;
+    } catch (error) {
+      logError("Error reading from PDF cache with key:", error);
+      return null;
+    }
+  }
+
   async set(file: TFile, response: Pdf4llmResponse): Promise<void> {
     try {
       await this.ensureCacheDir();
@@ -62,6 +84,17 @@ export class PDFCache {
       await app.vault.adapter.write(cachePath, JSON.stringify(response));
     } catch (error) {
       logError("Error writing to PDF cache:", error);
+    }
+  }
+
+  async setWithKey(cacheKey: string, response: Pdf4llmResponse): Promise<void> {
+    try {
+      await this.ensureCacheDir();
+      const cachePath = this.getCachePath(cacheKey);
+      logInfo("Caching PDF response for key:", cacheKey);
+      await app.vault.adapter.write(cachePath, JSON.stringify(response));
+    } catch (error) {
+      logError("Error writing to PDF cache with key:", error);
     }
   }
 

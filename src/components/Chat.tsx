@@ -20,7 +20,7 @@ import { getAIResponse } from "@/langchainStream";
 import ChainManager from "@/LLMProviders/chainManager";
 import CopilotPlugin from "@/main";
 import { Mention } from "@/mentions/Mention";
-import { useIsPlusUser } from "@/plusUtils";
+
 import {
   getComposerOutputPrompt,
   getSettings,
@@ -71,7 +71,6 @@ const Chat: React.FC<ChatProps> = ({
 
   const [previousMode, setPreviousMode] = useState<ChainType | null>(null);
   const [selectedChain, setSelectedChain] = useChainType();
-  const isPlusUser = useIsPlusUser();
 
   const mention = Mention.getInstance();
 
@@ -724,10 +723,8 @@ ${chatContent}`;
                     setSelectedChain(previousMode);
                     setPreviousMode(null);
                   } else {
-                    // default back to chat or plus mode
-                    setSelectedChain(
-                      isPlusUser ? ChainType.COPILOT_PLUS_CHAIN : ChainType.LLM_CHAIN
-                    );
+                    // default back to plus mode (now available to all users)
+                    setSelectedChain(ChainType.COPILOT_PLUS_CHAIN);
                   }
                 }}
                 showChatUI={(v) => setShowChatUI(v)}

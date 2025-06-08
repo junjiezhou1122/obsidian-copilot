@@ -20,17 +20,27 @@ export class ContextProcessor {
     vault: Vault,
     fileParserManager: FileParserManager
   ): Promise<string> {
-    const pdfRegex = /!\[\[(.*?\.pdf)\]\]/g;
+    // Enhanced regex to capture processing options
+    const pdfRegex = /!\[\[(.*?\.pdf)(?:\|([^|\]]+))?\]\]/g;
     const matches = [...content.matchAll(pdfRegex)];
 
     for (const match of matches) {
       const pdfName = match[1];
+      const optionsString = match[2]; // e.g., "pages:1-5" or "search:chapter 1"
       const pdfFile = vault.getAbstractFileByPath(pdfName);
 
       if (pdfFile instanceof TFile) {
         try {
-          const pdfContent = await fileParserManager.parseFile(pdfFile, vault);
-          content = content.replace(match[0], `\n\nEmbedded PDF (${pdfName}):\n${pdfContent}\n\n`);
+          // Parse processing options from the link
+          const options = this.parseEmbedOptions(optionsString);
+
+          // Use enhanced parser with options
+          const pdfContent = await fileParserManager.parseFile(pdfFile, vault, options);
+
+          content = content.replace(
+            match[0],
+            `\n\nEmbedded PDF (${pdfName})${options && Object.keys(options).length > 0 ? ` [${optionsString}]` : ""}:\n${pdfContent}\n\n`
+          );
         } catch (error) {
           console.error(`Error processing embedded PDF ${pdfName}:`, error);
           content = content.replace(
@@ -41,6 +51,49 @@ export class ContextProcessor {
       }
     }
     return content;
+  }
+
+  private parseEmbedOptions(optionsString?: string): any {
+    if (!optionsString) return {};
+
+    const options: any = {};
+
+    // Parse different option formats
+    // Format: "pages:1-10,search:chapter 1,max:20"
+    const parts = optionsString.split(",");
+
+    for (const part of parts) {
+      const [key, value] = part.split(":").map((s) => s.trim());
+
+      switch (key.toLowerCase()) {
+        case "pages": {
+          const pageMatch = value.match(/(\d+)-(\d+)/);
+          if (pageMatch) {
+            options.pageRange = {
+              start: parseInt(pageMatch[1]),
+              end: parseInt(pageMatch[2]),
+            };
+          }
+          break;
+        }
+        case "search":
+          options.searchTerms = [value];
+          break;
+        case "chapter":
+        case "chapters":
+          options.chapters = [value];
+          break;
+        case "max":
+          options.maxPages = parseInt(value);
+          break;
+        case "chars":
+        case "characters":
+          options.maxCharacters = parseInt(value);
+          break;
+      }
+    }
+
+    return options;
   }
 
   /**
@@ -84,24 +137,13 @@ export class ContextProcessor {
           return;
         }
 
-        // 2. Apply chain restrictions only to supported files that are NOT md or canvas
-        if (
-          currentChain !== ChainType.COPILOT_PLUS_CHAIN &&
-          note.extension !== "md" &&
-          note.extension !== "canvas"
-        ) {
-          // This file type is supported, but requires Plus mode (e.g., PDF)
-          console.warn(
-            `File type ${note.extension} requires Copilot Plus mode for context processing.`
-          );
-          return;
-        }
+        // All supported file types are now available in all modes
 
         // 3. If we reach here, parse the file (md, canvas, or other supported type in Plus mode)
         let content = await fileParserManager.parseFile(note, vault);
 
-        // Special handling for embedded PDFs within markdown (only in Plus mode)
-        if (note.extension === "md" && currentChain === ChainType.COPILOT_PLUS_CHAIN) {
+        // Special handling for embedded PDFs within markdown (now available in all modes)
+        if (note.extension === "md") {
           content = await this.processEmbeddedPDFs(content, vault, fileParserManager);
         }
 

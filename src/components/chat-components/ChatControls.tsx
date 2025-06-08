@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { SettingSwitch } from "@/components/ui/setting-switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { PLUS_UTM_MEDIUMS } from "@/constants";
-import { navigateToPlusPage, useIsPlusUser } from "@/plusUtils";
+
 import VectorStoreManager from "@/search/vectorStoreManager";
 import { updateSetting, useSettingsValue } from "@/settings/model";
 import { DropdownMenu, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
@@ -22,7 +21,6 @@ import {
   MoreHorizontal,
   RefreshCw,
   Sparkles,
-  SquareArrowOutUpRight,
 } from "lucide-react";
 import { Notice } from "obsidian";
 import React from "react";
@@ -145,7 +143,6 @@ export function ChatControls({
 }: ChatControlsProps) {
   const settings = useSettingsValue();
   const [selectedChain, setSelectedChain] = useChainType();
-  const isPlusUser = useIsPlusUser();
 
   const handleModeChange = (chainType: ChainType) => {
     setSelectedChain(chainType);
@@ -189,50 +186,26 @@ export function ChatControls({
             >
               vault QA
             </DropdownMenuItem>
-            {isPlusUser ? (
-              <DropdownMenuItem
-                onSelect={() => {
-                  handleModeChange(ChainType.COPILOT_PLUS_CHAIN);
-                }}
-              >
-                <div className="tw-flex tw-items-center tw-gap-1">
-                  <Sparkles className="tw-size-4" />
-                  copilot plus (beta)
-                </div>
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem
-                onSelect={() => {
-                  navigateToPlusPage(PLUS_UTM_MEDIUMS.CHAT_MODE_SELECT);
-                  onCloseProject?.();
-                }}
-              >
+            <DropdownMenuItem
+              onSelect={() => {
+                handleModeChange(ChainType.COPILOT_PLUS_CHAIN);
+              }}
+            >
+              <div className="tw-flex tw-items-center tw-gap-1">
+                <Sparkles className="tw-size-4" />
                 copilot plus (beta)
-                <SquareArrowOutUpRight className="tw-size-3" />
-              </DropdownMenuItem>
-            )}
+              </div>
+            </DropdownMenuItem>
 
-            {isPlusUser ? (
-              <DropdownMenuItem
-                className="tw-flex tw-items-center tw-gap-1"
-                onSelect={() => {
-                  handleModeChange(ChainType.PROJECT_CHAIN);
-                }}
-              >
-                <LibraryBig className="tw-size-4" />
-                projects (alpha)
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem
-                onSelect={() => {
-                  navigateToPlusPage(PLUS_UTM_MEDIUMS.CHAT_MODE_SELECT);
-                  onCloseProject?.();
-                }}
-              >
-                copilot plus (beta)
-                <SquareArrowOutUpRight className="tw-size-3" />
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem
+              className="tw-flex tw-items-center tw-gap-1"
+              onSelect={() => {
+                handleModeChange(ChainType.PROJECT_CHAIN);
+              }}
+            >
+              <LibraryBig className="tw-size-4" />
+              projects (alpha)
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

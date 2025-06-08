@@ -1,11 +1,10 @@
-import { getStandaloneQuestion } from "@/chainUtils";
 import {
   EMPTY_INDEX_ERROR_MESSAGE,
   PLUS_MODE_DEFAULT_SOURCE_CHUNKS,
   TEXT_WEIGHT,
 } from "@/constants";
 import { CustomError } from "@/error";
-import { BrevilabsClient } from "@/LLMProviders/brevilabsClient";
+// Removed BrevilabsClient dependency - web search disabled
 import { HybridRetriever } from "@/search/hybridRetriever";
 import VectorStoreManager from "@/search/vectorStoreManager";
 import { getSettings } from "@/settings/model";
@@ -116,33 +115,14 @@ const indexTool = tool(
   }
 );
 
-// Add new web search tool
+// Web search tool disabled - Brevilabs API dependency removed
 const webSearchTool = tool(
   async ({ query, chatHistory }: { query: string; chatHistory: ChatHistoryEntry[] }) => {
-    try {
-      // Get standalone question considering chat history
-      const standaloneQuestion = await getStandaloneQuestion(query, chatHistory);
-
-      const response = await BrevilabsClient.getInstance().webSearch(standaloneQuestion);
-      const citations = response.response.citations || [];
-      const citationsList =
-        citations.length > 0
-          ? "\n\nSources:\n" + citations.map((url, index) => `[${index + 1}] ${url}`).join("\n")
-          : "";
-
-      return (
-        "Here are the web search results. Please provide a response based on this information and include source citations listed at the end of your response under the heading '#### Sources' as a list of markdown links. For each URL, create a descriptive title based on the domain and path and return it in the markdown format '- [title](url)':\n\n" +
-        response.response.choices[0].message.content +
-        citationsList
-      );
-    } catch (error) {
-      console.error(`Error processing web search query ${query}:`, error);
-      return "";
-    }
+    return "Web search functionality has been disabled. Please use local search or provide information directly.";
   },
   {
     name: "webSearch",
-    description: "Search the web for information",
+    description: "Search the web for information (currently disabled)",
     schema: z.object({
       query: z.string().describe("The search query"),
       chatHistory: z

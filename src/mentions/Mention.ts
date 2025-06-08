@@ -1,6 +1,11 @@
 import { ImageProcessor } from "@/imageProcessing/imageProcessor";
-import { BrevilabsClient, Url4llmResponse } from "@/LLMProviders/brevilabsClient";
+// Removed BrevilabsClient dependency - URL processing disabled
 import { isYoutubeUrl } from "@/utils";
+
+interface Url4llmResponse {
+  response: string;
+  elapsed_time_ms: number;
+}
 
 export interface MentionData {
   type: string;
@@ -11,11 +16,9 @@ export interface MentionData {
 export class Mention {
   private static instance: Mention;
   private mentions: Map<string, MentionData>;
-  private brevilabsClient: BrevilabsClient;
 
   private constructor() {
     this.mentions = new Map();
-    this.brevilabsClient = BrevilabsClient.getInstance();
   }
 
   static getInstance(): Mention {
@@ -42,12 +45,8 @@ export class Mention {
   }
 
   async processUrl(url: string): Promise<Url4llmResponse> {
-    try {
-      return await this.brevilabsClient.url4llm(url);
-    } catch (error) {
-      console.error(`Error processing URL ${url}:`, error);
-      return { response: url, elapsed_time_ms: 0 };
-    }
+    // URL processing disabled - return the URL as-is
+    return { response: `[URL processing disabled: ${url}]`, elapsed_time_ms: 0 };
   }
 
   // For non-youtube URLs

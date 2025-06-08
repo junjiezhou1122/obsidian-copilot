@@ -73,7 +73,7 @@ export const CopilotPlusSettings: React.FC = () => {
       <section className="tw-flex tw-flex-col tw-gap-4">
         <div className="tw-flex tw-items-center tw-py-4">
           <Badge variant="secondary" className="tw-text-accent">
-            Plus Required
+            Advanced Features
           </Badge>
         </div>
         <div className="tw-flex tw-flex-col tw-gap-4">

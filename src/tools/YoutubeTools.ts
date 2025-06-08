@@ -1,40 +1,20 @@
-import { BrevilabsClient } from "@/LLMProviders/brevilabsClient";
+// Removed BrevilabsClient dependency - YouTube transcription disabled
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
 const simpleYoutubeTranscriptionTool = tool(
   async ({ url }: { url: string }) => {
-    try {
-      const response = await BrevilabsClient.getInstance().youtube4llm(url);
-
-      // Check if transcript is empty
-      if (!response.response.transcript) {
-        return JSON.stringify({
-          success: false,
-          message:
-            "Transcript not available. Only English videos with the auto transcript option turned on are supported at the moment",
-        });
-      }
-
-      return JSON.stringify({
-        success: true,
-        transcript: response.response.transcript,
-        elapsed_time_ms: response.elapsed_time_ms,
-      });
-    } catch (error) {
-      console.error(`Error transcribing YouTube video ${url}:`, error);
-      return JSON.stringify({
-        success: false,
-        message: "An error occurred while transcribing the YouTube video.",
-      });
-    }
+    return JSON.stringify({
+      success: false,
+      message:
+        "YouTube transcription functionality has been disabled. Please provide transcripts manually or use alternative methods.",
+    });
   },
   {
     name: "youtubeTranscription",
-    description: "Get the transcript of a YouTube video",
+    description: "Get the transcript of a YouTube video (currently disabled)",
     schema: z.object({
       url: z.string().describe("The YouTube video URL"),
-      brevilabsClient: z.any().describe("The BrevilabsClient instance"),
     }),
   }
 );

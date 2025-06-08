@@ -1,61 +1,113 @@
-import { BrevilabsClient } from "@/LLMProviders/brevilabsClient";
 import { ProjectConfig } from "@/aiParams";
 import { PDFCache } from "@/cache/pdfCache";
 import { ProjectContextCache } from "@/cache/projectContextCache";
 import { logError, logInfo } from "@/logger";
 import { TFile, Vault } from "obsidian";
 import { CanvasLoader } from "./CanvasLoader";
+import { LocalPDFParser } from "./LocalPDFParser";
+import { SelectivePDFParser, PDFProcessingOptions } from "./SelectivePDFParser";
 
 interface FileParser {
   supportedExtensions: string[];
-  parseFile: (file: TFile, vault: Vault) => Promise<string>;
+  parseFile: (file: TFile, vault: Vault, options?: any) => Promise<string>;
 }
 
 export class MarkdownParser implements FileParser {
   supportedExtensions = ["md"];
 
-  async parseFile(file: TFile, vault: Vault): Promise<string> {
+  async parseFile(file: TFile, vault: Vault, options?: any): Promise<string> {
     return await vault.read(file);
   }
 }
 
 export class PDFParser implements FileParser {
   supportedExtensions = ["pdf"];
-  private brevilabsClient: BrevilabsClient;
   private pdfCache: PDFCache;
 
-  constructor(brevilabsClient: BrevilabsClient) {
-    this.brevilabsClient = brevilabsClient;
+  constructor() {
     this.pdfCache = PDFCache.getInstance();
   }
 
-  async parseFile(file: TFile, vault: Vault): Promise<string> {
+  async parseFile(file: TFile, vault: Vault, options?: PDFProcessingOptions): Promise<string> {
     try {
-      logInfo("Parsing PDF file:", file.path);
+      logInfo("Parsing PDF file locally:", file.path, options);
 
-      // Try to get from cache first
-      const cachedResponse = await this.pdfCache.get(file);
+      // Create cache key including options for selective processing
+      const cacheKey = this.getCacheKeyWithOptions(file, options);
+      const cachedResponse = await this.pdfCache.getWithKey(cacheKey);
+
       if (cachedResponse) {
         logInfo("Using cached PDF content for:", file.path);
         return cachedResponse.response;
       }
 
-      // If not in cache, read the file and call the API
+      // Check file size and apply smart defaults if no options provided
+      const fileSize = file.stat.size;
+      const finalOptions = this.getProcessingOptions(fileSize, options);
+
+      // Read the file content and process with selective parsing
       const binaryContent = await vault.readBinary(file);
-      logInfo("Calling pdf4llm API for:", file.path);
-      const pdf4llmResponse = await this.brevilabsClient.pdf4llm(binaryContent);
-      await this.pdfCache.set(file, pdf4llmResponse);
-      return pdf4llmResponse.response;
+
+      // Use selective parser if options are provided, otherwise fall back to original
+      const extractedText =
+        finalOptions && Object.keys(finalOptions).length > 0
+          ? await SelectivePDFParser.extractTextFromPDF(binaryContent, finalOptions)
+          : await LocalPDFParser.extractTextFromPDF(binaryContent);
+
+      // Create a response object compatible with cache
+      const response = {
+        response: extractedText,
+        elapsed_time_ms: 0,
+        options: finalOptions,
+      };
+
+      // Cache the result
+      await this.pdfCache.setWithKey(cacheKey, response);
+
+      return extractedText;
     } catch (error) {
       logError(`Error extracting content from PDF ${file.path}:`, error);
-
-      // Check if it's a license-related error
-      if (error.message && error.message.includes("license")) {
-        return `[PDF content not available - Copilot Plus license required for PDF processing. File: ${file.basename}]`;
-      }
-
-      return `[Error: Could not extract content from PDF ${file.basename}]`;
+      return `[Error: Could not extract content from PDF ${file.basename}. ${error.message}]`;
     }
+  }
+
+  private getCacheKeyWithOptions(file: TFile, options?: PDFProcessingOptions): string {
+    const baseKey = `${file.path}:${file.stat.size}:${file.stat.mtime}`;
+    if (!options || Object.keys(options).length === 0) {
+      return baseKey;
+    }
+    const optionsKey = JSON.stringify(options);
+    return `${baseKey}:${optionsKey}`;
+  }
+
+  private getProcessingOptions(
+    fileSize: number,
+    userOptions?: PDFProcessingOptions
+  ): PDFProcessingOptions {
+    const sizeMB = fileSize / (1024 * 1024);
+
+    // Auto-adjust based on file size if no user options provided
+    if (!userOptions || Object.keys(userOptions).length === 0) {
+      if (sizeMB > 50) {
+        // Large files (>50MB)
+        logInfo(`Large PDF detected (${sizeMB.toFixed(1)}MB), applying smart limits`);
+        return {
+          maxPages: 20,
+          maxCharacters: 50000,
+        };
+      } else if (sizeMB > 10) {
+        // Medium files (>10MB)
+        logInfo(`Medium PDF detected (${sizeMB.toFixed(1)}MB), applying moderate limits`);
+        return {
+          maxPages: 50,
+          maxCharacters: 100000,
+        };
+      }
+      // Small files - no limits
+      return {};
+    }
+
+    return userOptions;
   }
 
   async clearCache(): Promise<void> {
@@ -67,7 +119,7 @@ export class PDFParser implements FileParser {
 export class CanvasParser implements FileParser {
   supportedExtensions = ["canvas"];
 
-  async parseFile(file: TFile, vault: Vault): Promise<string> {
+  async parseFile(file: TFile, vault: Vault, options?: any): Promise<string> {
     try {
       logInfo("Parsing Canvas file:", file.path);
       const canvasLoader = new CanvasLoader(vault);
@@ -83,126 +135,20 @@ export class CanvasParser implements FileParser {
 }
 
 export class Docs4LLMParser implements FileParser {
-  // Support various document and media file types
-  supportedExtensions = [
-    // Base types
-    "pdf",
-
-    // Documents and presentations
-    "602",
-    "abw",
-    "cgm",
-    "cwk",
-    "doc",
-    "docx",
-    "docm",
-    "dot",
-    "dotm",
-    "hwp",
-    "key",
-    "lwp",
-    "mw",
-    "mcw",
-    "pages",
-    "pbd",
-    "ppt",
-    "pptm",
-    "pptx",
-    "pot",
-    "potm",
-    "potx",
-    "rtf",
-    "sda",
-    "sdd",
-    "sdp",
-    "sdw",
-    "sgl",
-    "sti",
-    "sxi",
-    "sxw",
-    "stw",
-    "sxg",
-    "txt",
-    "uof",
-    "uop",
-    "uot",
-    "vor",
-    "wpd",
-    "wps",
-    "xml",
-    "zabw",
-    "epub",
-
-    // Images
-    "jpg",
-    "jpeg",
-    "png",
-    "gif",
-    "bmp",
-    "svg",
-    "tiff",
-    "webp",
-    "web",
-    "htm",
-    "html",
-
-    // Spreadsheets
-    "xlsx",
-    "xls",
-    "xlsm",
-    "xlsb",
-    "xlw",
-    "csv",
-    "dif",
-    "sylk",
-    "slk",
-    "prn",
-    "numbers",
-    "et",
-    "ods",
-    "fods",
-    "uos1",
-    "uos2",
-    "dbf",
-    "wk1",
-    "wk2",
-    "wk3",
-    "wk4",
-    "wks",
-    "123",
-    "wq1",
-    "wq2",
-    "wb1",
-    "wb2",
-    "wb3",
-    "qpw",
-    "xlr",
-    "eth",
-    "tsv",
-
-    // Audio (limited to 20MB)
-    "mp3",
-    "mp4",
-    "mpeg",
-    "mpga",
-    "m4a",
-    "wav",
-    "webm",
-  ];
-  private brevilabsClient: BrevilabsClient;
+  // Support only PDF files for local processing
+  supportedExtensions = ["pdf"];
   private projectContextCache: ProjectContextCache;
   private currentProject: ProjectConfig | null;
 
-  constructor(brevilabsClient: BrevilabsClient, project: ProjectConfig | null = null) {
-    this.brevilabsClient = brevilabsClient;
+  constructor(project: ProjectConfig | null = null) {
     this.projectContextCache = ProjectContextCache.getInstance();
     this.currentProject = project;
   }
 
-  async parseFile(file: TFile, vault: Vault): Promise<string> {
+  async parseFile(file: TFile, vault: Vault, options?: PDFProcessingOptions): Promise<string> {
     try {
       logInfo(
-        `[Docs4LLMParser] Project ${this.currentProject?.name}: Parsing ${file.extension} file: ${file.path}`
+        `[Docs4LLMParser] Project ${this.currentProject?.name}: Parsing PDF file locally: ${file.path}`
       );
 
       if (!this.currentProject) {
@@ -210,9 +156,15 @@ export class Docs4LLMParser implements FileParser {
         throw new Error("No project context provided for file parsing");
       }
 
+      // Include options in cache key for project mode too
+      const cacheKey =
+        options && Object.keys(options).length > 0
+          ? `${file.path}:${JSON.stringify(options)}`
+          : file.path;
+
       const cachedContent = await this.projectContextCache.getFileContext(
         this.currentProject,
-        file.path
+        cacheKey
       );
       if (cachedContent) {
         logInfo(
@@ -220,56 +172,31 @@ export class Docs4LLMParser implements FileParser {
         );
         return cachedContent;
       }
+
       logInfo(
-        `[Docs4LLMParser] Project ${this.currentProject.name}: Cache miss for: ${file.path}. Proceeding to API call.`
+        `[Docs4LLMParser] Project ${this.currentProject.name}: Cache miss for: ${file.path}. Processing locally.`
       );
 
       const binaryContent = await vault.readBinary(file);
 
-      logInfo(
-        `[Docs4LLMParser] Project ${this.currentProject.name}: Calling docs4llm API for: ${file.path}`
-      );
-      const docs4llmResponse = await this.brevilabsClient.docs4llm(binaryContent, file.extension);
-
-      if (!docs4llmResponse || !docs4llmResponse.response) {
-        throw new Error("Empty response from docs4llm API");
-      }
-
-      // Ensure response is a string
-      let content = "";
-      if (typeof docs4llmResponse.response === "string") {
-        content = docs4llmResponse.response;
-      } else if (typeof docs4llmResponse.response === "object") {
-        // If response is an object, try to get the text content
-        if (docs4llmResponse.response.text) {
-          content = docs4llmResponse.response.text;
-        } else if (docs4llmResponse.response.content) {
-          content = docs4llmResponse.response.content;
-        } else {
-          // If no text/content field, stringify the entire response
-          content = JSON.stringify(docs4llmResponse.response, null, 2);
-        }
-      } else {
-        content = String(docs4llmResponse.response);
-      }
+      // Use selective parser if options are provided
+      const localText =
+        options && Object.keys(options).length > 0
+          ? await SelectivePDFParser.extractTextFromPDF(binaryContent, options)
+          : await LocalPDFParser.extractTextFromPDF(binaryContent);
 
       // Cache the converted content
-      await this.projectContextCache.setFileContext(this.currentProject, file.path, content);
+      await this.projectContextCache.setFileContext(this.currentProject, cacheKey, localText);
 
       logInfo(
         `[Docs4LLMParser] Project ${this.currentProject.name}: Successfully processed and cached: ${file.path}`
       );
-      return content;
+      return localText;
     } catch (error) {
       logError(
         `[Docs4LLMParser] Project ${this.currentProject?.name}: Error processing file ${file.path}:`,
         error
       );
-
-      // Check if it's a license-related error
-      if (error.message && error.message.includes("license")) {
-        return `[${file.extension.toUpperCase()} content not available - Copilot Plus license required for document processing. File: ${file.basename}]`;
-      }
 
       return `[Error: Could not extract content from ${file.basename}]`;
     }
@@ -297,24 +224,21 @@ export class FileParserManager {
   private isProjectMode: boolean;
   private currentProject: ProjectConfig | null;
 
-  constructor(
-    brevilabsClient: BrevilabsClient,
-    vault: Vault,
-    isProjectMode: boolean = false,
-    project: ProjectConfig | null = null
-  ) {
+  constructor(vault: Vault, isProjectMode: boolean = false, project: ProjectConfig | null = null) {
     this.isProjectMode = isProjectMode;
     this.currentProject = project;
 
     // Register parsers
     this.registerParser(new MarkdownParser());
 
-    // In project mode, use Docs4LLMParser for all supported files including PDFs
-    this.registerParser(new Docs4LLMParser(brevilabsClient, project));
+    // In project mode, use Docs4LLMParser for PDFs
+    if (isProjectMode) {
+      this.registerParser(new Docs4LLMParser(project));
+    }
 
-    // Only register PDFParser when not in project mode
+    // Always register PDFParser for non-project mode
     if (!isProjectMode) {
-      this.registerParser(new PDFParser(brevilabsClient));
+      this.registerParser(new PDFParser());
     }
 
     this.registerParser(new CanvasParser());
@@ -326,12 +250,12 @@ export class FileParserManager {
     }
   }
 
-  async parseFile(file: TFile, vault: Vault): Promise<string> {
+  async parseFile(file: TFile, vault: Vault, options?: any): Promise<string> {
     const parser = this.parsers.get(file.extension);
     if (!parser) {
       throw new Error(`No parser found for file type: ${file.extension}`);
     }
-    return await parser.parseFile(file, vault);
+    return await parser.parseFile(file, vault, options);
   }
 
   supportsExtension(extension: string): boolean {
