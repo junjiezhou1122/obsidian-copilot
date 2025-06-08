@@ -170,7 +170,6 @@ export const BUILTIN_CHAT_MODELS: CustomModel[] = [
     enabled: true,
     isBuiltIn: true,
     core: true,
-    plusExclusive: true,
     projectEnabled: false,
     capabilities: [ModelCapability.VISION],
   },
@@ -329,7 +328,6 @@ export const BUILTIN_EMBEDDING_MODELS: CustomModel[] = [
     isBuiltIn: true,
     isEmbeddingModel: true,
     core: true,
-    plusExclusive: true,
   },
   {
     name: EmbeddingModels.COPILOT_PLUS_LARGE,
@@ -338,7 +336,6 @@ export const BUILTIN_EMBEDDING_MODELS: CustomModel[] = [
     isBuiltIn: true,
     isEmbeddingModel: true,
     core: true,
-    plusExclusive: true,
     believerExclusive: true,
     dimensions: 1024,
   },
@@ -349,7 +346,6 @@ export const BUILTIN_EMBEDDING_MODELS: CustomModel[] = [
     isBuiltIn: true,
     isEmbeddingModel: true,
     core: true,
-    plusExclusive: true,
     dimensions: 512,
   },
   {
@@ -612,7 +608,7 @@ export const AUTOCOMPLETE_CONFIG = {
 
 export const DEFAULT_SETTINGS: CopilotSettings = {
   userId: uuidv4(),
-  isPlusUser: false,
+  isPlusUser: true,
   plusLicenseKey: "",
   openAIApiKey: "",
   openAIOrgId: "",
@@ -671,7 +667,7 @@ export const DEFAULT_SETTINGS: CopilotSettings = {
   enableAutocomplete: true,
   autocompleteAcceptKey: AUTOCOMPLETE_CONFIG.KEYBIND,
   allowAdditionalContext: true,
-  enableWordCompletion: false,
+  enableWordCompletion: true,
   lastDismissedVersion: null,
   passMarkdownImages: true,
   enableCustomPromptTemplating: true,

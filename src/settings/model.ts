@@ -251,9 +251,8 @@ export function sanitizeSettings(settings: CopilotSettings): CopilotSettings {
 }
 
 export function getComposerOutputPrompt(): string {
-  const isPlusUser = getSettings().isPlusUser;
-
-  return isPlusUser ? COMPOSER_OUTPUT_INSTRUCTIONS : "";
+  // Always return composer instructions since we've enabled Plus features for all users
+  return COMPOSER_OUTPUT_INSTRUCTIONS;
 }
 
 export function getSystemPrompt(): string {

@@ -88,8 +88,55 @@ export class IntentAnalyzer {
       return processedToolCalls;
     } catch (error) {
       console.error("Error in intent analysis:", error);
-      throw error; // Re-throw the error to be caught by CopilotPlusChainRunner
+
+      // Fallback: If Broca API fails, try to analyze @ commands manually
+      console.log("Falling back to manual @ command analysis...");
+      return this.fallbackAnalyzeIntent(originalMessage);
     }
+  }
+
+  /**
+   * Fallback intent analysis when Broca API is unavailable
+   * This provides basic @ command detection without the advanced AI analysis
+   */
+  private static async fallbackAnalyzeIntent(originalMessage: string): Promise<ToolCall[]> {
+    const processedToolCalls: ToolCall[] = [];
+    const message = originalMessage.toLowerCase();
+
+    // Simple fallback analysis for @ commands only
+    await this.processAtCommands(originalMessage, processedToolCalls, {
+      salientTerms: [], // No salient terms available in fallback mode
+    });
+
+    // If no @ commands detected, try to determine if this might need vault search
+    if (processedToolCalls.length === 0) {
+      // Simple heuristic: if the message contains question words, add vault search
+      const questionWords = [
+        "what",
+        "how",
+        "why",
+        "when",
+        "where",
+        "who",
+        "which",
+        "explain",
+        "tell",
+        "show",
+      ];
+      const containsQuestionWord = questionWords.some((word) => message.includes(word));
+
+      if (containsQuestionWord) {
+        processedToolCalls.push({
+          tool: localSearchTool,
+          args: {
+            query: originalMessage,
+            salientTerms: [],
+          },
+        });
+      }
+    }
+
+    return processedToolCalls;
   }
 
   private static async processAtCommands(

@@ -48,6 +48,12 @@ export class PDFParser implements FileParser {
       return pdf4llmResponse.response;
     } catch (error) {
       logError(`Error extracting content from PDF ${file.path}:`, error);
+
+      // Check if it's a license-related error
+      if (error.message && error.message.includes("license")) {
+        return `[PDF content not available - Copilot Plus license required for PDF processing. File: ${file.basename}]`;
+      }
+
       return `[Error: Could not extract content from PDF ${file.basename}]`;
     }
   }
@@ -259,7 +265,13 @@ export class Docs4LLMParser implements FileParser {
         `[Docs4LLMParser] Project ${this.currentProject?.name}: Error processing file ${file.path}:`,
         error
       );
-      throw error; // Propagate the error up
+
+      // Check if it's a license-related error
+      if (error.message && error.message.includes("license")) {
+        return `[${file.extension.toUpperCase()} content not available - Copilot Plus license required for document processing. File: ${file.basename}]`;
+      }
+
+      return `[Error: Could not extract content from ${file.basename}]`;
     }
   }
 

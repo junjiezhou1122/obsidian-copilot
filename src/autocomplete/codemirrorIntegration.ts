@@ -599,6 +599,15 @@ export class CodeMirrorIntegration {
         this.activeRequests.delete(requestKey);
 
         logError("[Copilot Autocomplete] Error fetching autocomplete suggestions:", error);
+
+        // If this is a license-related error, disable sentence completion notifications for this session
+        if (error.message && error.message.includes("license")) {
+          // Silently fail for license errors - user knows they don't have Plus license
+          return;
+        }
+
+        // For other errors, we could potentially add a simple text continuation fallback here
+        // For now, just fail silently to avoid spam
       }
     }
   }
